@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Cart from './Cart';
 
 function POSScreen({ products, onCheckout }) {
     const [cart, setCart] = useState([]);
@@ -10,7 +11,6 @@ function POSScreen({ products, onCheckout }) {
         setCart(prev => {
             const existing = prev.find(item => item.id === product.id);
             if (existing) {
-                // Prevent adding more than available stock
                 if (existing.quantity >= product.stock) return prev;
                 return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
             }
@@ -18,18 +18,20 @@ function POSScreen({ products, onCheckout }) {
         });
     };
 
-    const updateQuantity = (id, delta) => {
+    const updateQuantity = (id, newQty) => {
         setCart(prev => prev.map(item => {
             if (item.id === id) {
                 const product = products.find(p => p.id === id);
-                const newQty = item.quantity + delta;
-                // Check bounds: min 0, max stock
                 if (newQty < 0) return item;
                 if (product && newQty > product.stock) return item;
                 return { ...item, quantity: newQty };
             }
             return item;
         }).filter(item => item.quantity > 0));
+    };
+
+    const removeFromCart = (id) => {
+        setCart(prev => prev.filter(item => item.id !== id));
     };
 
     const handlePayment = () => {
@@ -50,8 +52,6 @@ function POSScreen({ products, onCheckout }) {
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         p.barcode.includes(searchTerm)
     );
-
-    const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
     return (
         <div className="pos-container">
@@ -75,35 +75,17 @@ function POSScreen({ products, onCheckout }) {
             </div>
             
             <div className="pos-right">
-                {/* Cart Section */}
+                
                 <div className="cart-section">
                     <h2>Current Sale</h2>
-                    <div className="cart-items">
-                        {cart.length === 0 ? <p style={{color: '#888', textAlign: 'center'}}>Cart is empty</p> : null}
-                        {cart.map(item => (
-                            <div key={item.id} className="cart-item">
-                                <div className="item-info">
-                                    <span>{item.name}</span>
-                                    
-                                </div>
-                                <div className="qty-controls">
-                                    <button onClick={() => updateQuantity(item.id, -1)}>-</button>
-                                    <span>{item.quantity}</span>
-                                    <button onClick={() => updateQuantity(item.id, 1)}>+</button>
-                                </div>
-                                <span className="item-total">${(item.price * item.quantity).toFixed(2)}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="cart-total">
-                        <h3>Total: ${cartTotal.toFixed(2)}</h3>
-                        <button className="checkout-btn" onClick={handlePayment} disabled={cart.length === 0}>
-                            Process Checkout
-                        </button>
-                    </div>
+                    <Cart 
+                        cartItems={cart}
+                        updateQuantity={updateQuantity}
+                        removeFromCart={removeFromCart}
+                        handleCheckout={handlePayment}
+                    />
                 </div>
                 
-                {/* Invoice Section - Shows only after checkout */}
                 {invoice && (
                     <div className="invoice-section">
                         <div className="invoice-header">

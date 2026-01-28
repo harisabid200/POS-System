@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import './styles/App.css';
 import Login from './components/Login';
@@ -13,9 +13,7 @@ const initialProducts = [];
 function App() {
   
   const [products, setProducts] = useState(initialProducts);
-  const [transactions, setTransactions] = useState([]);
   const [user, setUser] = useState(null);
-  const prevTransactionsLength = useRef(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,73 +42,6 @@ function App() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (transactions.length > prevTransactionsLength.current) {
-      const lastTransaction = transactions[transactions.length - 1];
-      
-      const updateAirtable = async () => {
-        const updates = lastTransaction.items.map(item => {
-          const product = products.find(p => p.id === item.id);
-          if (!product) return null;
-          return {
-            id: product.id,
-            fields: {
-              Stock: product.stock
-            }
-          };
-        }).filter(Boolean);
-
-        if (updates.length > 0) {
-          try {
-            await axios({
-              method: 'patch',
-              url: `https://api.airtable.com/v0/${process.env.REACT_APP_BASE_ID}/${process.env.REACT_APP_TABLE_ID}`,
-              headers: {
-                Authorization: `Bearer ${process.env.REACT_APP_AIRTABLE}`,
-                'Content-Type': 'application/json'
-              },
-              data: {
-                records: updates,
-                typecast: true
-              }
-            });
-            console.log("Airtable stock updated successfully");
-          } catch (error) {
-            console.error("Error updating Airtable stock:", error);
-          }
-        }
-
-        // Create Invoice in Airtable
-        try {
-          await axios({
-            method: 'post',
-            url: `https://api.airtable.com/v0/${process.env.REACT_APP_BASE_ID}/${process.env.REACT_APP_INVOICE_ID}`,
-            headers: {
-              Authorization: `Bearer ${process.env.REACT_APP_AIRTABLE}`,
-              'Content-Type': 'application/json'
-            },
-            data: {
-              records: [{
-                fields: {
-                  "TransactionID": String(lastTransaction.id),
-                  "Date": lastTransaction.date,
-                  "Total": lastTransaction.total,
-                  "Items": JSON.stringify(lastTransaction.items)
-                }
-              }],
-              typecast: true
-            }
-          });
-          console.log("Invoice created in Airtable successfully");
-        } catch (error) {
-          console.error("Error creating invoice in Airtable:", error);
-        }
-      };
-      updateAirtable();
-    }
-    prevTransactionsLength.current = transactions.length;
-  }, [transactions, products]);
-
   const handleCheckout = (cartItems) => {
     console.log("Processing Checkout:", cartItems);
     const newTransaction = {
@@ -122,7 +53,7 @@ function App() {
         return sum + (product.price * item.quantity);
       }, 0)
     };
-    setTransactions(prev => [...prev, newTransaction]);
+
     setProducts(prevProducts => {
       return prevProducts.map(product => {
         const cartItem = cartItems.find(item => item.id === product.id);
@@ -132,6 +63,68 @@ function App() {
         return product;
       });
     });
+
+    // Sync to Airtable immediately
+    const syncToAirtable = async () => {
+      // 1. Prepare Stock Updates
+      const updates = cartItems.map(item => {
+        const product = products.find(p => p.id === item.id);
+        if (!product) return null;
+        // Calculate new stock based on current state minus cart quantity
+        const newStock = product.stock - item.quantity;
+        return {
+          id: product.id,
+          fields: {
+            Stock: newStock
+          }
+        };
+      }).filter(Boolean);
+
+      if (updates.length > 0) {
+        try {
+          await axios({
+            method: 'patch',
+            url: `https://api.airtable.com/v0/${process.env.REACT_APP_BASE_ID}/${process.env.REACT_APP_TABLE_ID}`,
+            headers: {
+              Authorization: `Bearer ${process.env.REACT_APP_AIRTABLE}`,
+              'Content-Type': 'application/json'
+            },
+            data: { records: updates, typecast: true }
+          });
+          console.log("Airtable stock updated successfully");
+        } catch (error) {
+          console.error("Error updating Airtable stock:", error);
+        }
+      }
+
+      // 2. Create Invoice in Airtable
+      try {
+        await axios({
+          method: 'post',
+          url: `https://api.airtable.com/v0/${process.env.REACT_APP_BASE_ID}/${process.env.REACT_APP_INVOICE_ID}`,
+          headers: {
+            Authorization: `Bearer ${process.env.REACT_APP_AIRTABLE}`,
+            'Content-Type': 'application/json'
+          },
+          data: {
+            records: [{
+              fields: {
+                "TransactionID": String(newTransaction.id),
+                "Date": newTransaction.date,
+                "Total": newTransaction.total,
+                "Items": JSON.stringify(newTransaction.items)
+              }
+            }],
+            typecast: true
+          }
+        });
+        console.log("Invoice created in Airtable successfully");
+      } catch (error) {
+        console.error("Error creating invoice in Airtable:", error);
+      }
+    };
+    syncToAirtable();
+
     console.log("Stock updated after checkout.");
     return newTransaction;
   };
@@ -151,10 +144,17 @@ function App() {
 
       if (response.data.records.length > 0) {
         const record = response.data.records[0];
+        
+        // Use TransactionID to recover full timestamp if available, as Airtable might strip time from Date field
+        const transactionId = record.fields.TransactionID;
+        const dateFromId = (transactionId && !isNaN(transactionId)) 
+          ? new Date(Number(transactionId)).toISOString() 
+          : record.fields.Date;
+
         return {
           airtableId: record.id,
           id: record.fields.TransactionID,
-          date: record.fields.Date,
+          date: dateFromId,
           total: record.fields.Total,
           items: JSON.parse(record.fields.Items || '[]')
         };
