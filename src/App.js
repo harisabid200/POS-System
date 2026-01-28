@@ -236,24 +236,75 @@ function App() {
     }
   };
 
-  const handleUpdateStock = (productData) => {
+  const handleUpdateStock = async (productData) => {
     if (productData.id) {
-        setProducts(prevProducts => {
-            return prevProducts.map(p => {
-                if (p.id === productData.id) {
-                    return { ...p, ...productData };
+        // Update existing product in Airtable
+        try {
+            await axios({
+                method: 'patch',
+                url: `https://api.airtable.com/v0/${process.env.REACT_APP_BASE_ID}/${process.env.REACT_APP_TABLE_ID}`,
+                headers: {
+                    Authorization: `Bearer ${process.env.REACT_APP_AIRTABLE}`,
+                    'Content-Type': 'application/json'
+                },
+                data: {
+                    records: [{
+                        id: productData.id,
+                        fields: {
+                            Name: productData.name,
+                            Barcode: productData.barcode,
+                            Price: parseFloat(productData.price),
+                            Stock: parseInt(productData.stock)
+                        }
+                    }]
                 }
-                return p;
             });
-        });
+            
+            // Update local state
+            setProducts(prevProducts => prevProducts.map(p => p.id === productData.id ? { ...p, ...productData } : p));
+            console.log("Product updated successfully");
+        } catch (error) {
+            console.error("Error updating product:", error);
+            alert("Failed to update product. Please try again.");
+        }
     } else {
-        console.log("Adding new product:", productData);
-        const newProduct = {
-            ...productData,
-            id: Date.now(),
-            barcode: String(Math.floor(100 + Math.random() )),
-        };
-        setProducts(prevProducts => [...prevProducts, newProduct]);
+        // Create new product in Airtable
+        try {
+            const response = await axios({
+                method: 'post',
+                url: `https://api.airtable.com/v0/${process.env.REACT_APP_BASE_ID}/${process.env.REACT_APP_TABLE_ID}`,
+                headers: {
+                    Authorization: `Bearer ${process.env.REACT_APP_AIRTABLE}`,
+                    'Content-Type': 'application/json'
+                },
+                data: {
+                    records: [{
+                        fields: {
+                            Name: productData.name,
+                            Barcode: productData.barcode,
+                            Price: parseFloat(productData.price),
+                            Stock: parseInt(productData.stock)
+                        }
+                    }]
+                }
+            });
+
+            if (response.data.records.length > 0) {
+                const record = response.data.records[0];
+                const newProduct = {
+                    id: record.id,
+                    name: record.fields.Name,
+                    barcode: record.fields.Barcode,
+                    price: record.fields.Price,
+                    stock: record.fields.Stock
+                };
+                setProducts(prevProducts => [...prevProducts, newProduct]);
+                console.log("Product created successfully");
+            }
+        } catch (error) {
+            console.error("Error creating product:", error);
+            alert("Failed to create product. Please try again.");
+        }
     }
   };
 
