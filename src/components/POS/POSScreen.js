@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import Cart from './Cart';
+import ProductList from './ProductList';
+import SearchBar from './SearchBar';
 
 function POSScreen({ products, onCheckout }) {
     const [cart, setCart] = useState([]);
@@ -63,15 +65,8 @@ function POSScreen({ products, onCheckout }) {
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                 />
-                <div className="product-grid">
-                    {filteredProducts.map(product => (
-                        <div key={product.id} className="product-card" onClick={() => addToCart(product)}>
-                            <h3>{product.name}</h3>
-                            <p>${product.price.toFixed(2)}</p>
-                            <p className={product.stock < 5 ? "low-stock" : ""}>Stock: {product.stock}</p>
-                        </div>
-                    ))}
-                </div>
+                <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                <ProductList products={filteredProducts} addToCart={addToCart} />
             </div>
             
             <div className="pos-right">
