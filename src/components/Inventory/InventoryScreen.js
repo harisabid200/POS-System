@@ -199,15 +199,10 @@ const InventoryScreen = ({ products, onUpdateStock }) => {
                         <button 
                             type="button" 
                             onClick={handleCancel}
+                            className="checkout-btn"
                             style={{ 
                                 flex: 1, 
-                                padding: '10px', 
-                                cursor: 'pointer', 
                                 backgroundColor: '#6c757d', 
-                                border: 'none', 
-                                color: 'white',
-                                borderRadius: '4px',
-                                fontSize: '1.2rem'
                             }}
                         >
                             Cancel
