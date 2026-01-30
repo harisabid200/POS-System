@@ -152,14 +152,28 @@ h1, h2 {
 }
 
 .product-card h3 {
-  margin: 0 0 5px 0;
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  color: #333;
 }
 
 .product-card p {
-  margin: 2px 0;
+  margin: 4px 0;
+  color: #666;
 }
 
-.low-stock {
+.product-price {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.product-barcode {
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.product-card .low-stock {
   color: #dc3545;
   font-weight: bold;
 }
