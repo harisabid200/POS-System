@@ -49,10 +49,12 @@ function POSScreen({ products, onCheckout }) {
         setSearchTerm("");
     };
 
-    const filteredProducts = products.filter(p => 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        p.barcode.includes(searchTerm)
-    );
+    const filteredProducts = products.filter(p => {
+        if (searchTerm === "") {
+            return p.stock > 0;
+        }
+        return p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.barcode.includes(searchTerm);
+    });
 
     return (
         <div className="pos-container">

@@ -56,12 +56,15 @@ const InventoryScreen = ({ products, onUpdateStock }) => {
         return;
     }
 
-    if (formData.barcode) {
-        const duplicate = products.find(p => p.barcode === formData.barcode && p.id !== formData.id);
-        if (duplicate) {
-            alert(`Barcode "${formData.barcode}" already exists for product: ${duplicate.name}`);
-            return;
-        }
+    if (!formData.barcode || !/^\d+$/.test(formData.barcode)) {
+        alert("Please enter a valid barcode (integers only)");
+        return;
+    }
+
+    const duplicate = products.find(p => p.barcode === formData.barcode && p.id !== formData.id);
+    if (duplicate) {
+        alert(`Barcode "${formData.barcode}" already exists for product: ${duplicate.name}`);
+        return;
     }
 
     setIsLoading(true);

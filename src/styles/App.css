@@ -151,6 +151,14 @@ h1, h2 {
   box-shadow: 0 4px 8px rgba(0,123,255,0.1);
 }
 
+.product-card h3 {
+  margin: 0 0 5px 0;
+}
+
+.product-card p {
+  margin: 2px 0;
+}
+
 .low-stock {
   color: #dc3545;
   font-weight: bold;
